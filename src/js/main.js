@@ -1,19 +1,139 @@
-let liftPositions = [];
+let lifts = [];
+const activeRequests = [];
 
-function handleUpLiftClick() {
-  console.log("upclick");
-  document.getElementById("lift-1").classList.add("moveLiftUp");
-  // document.getElementById("lift-1").animate(liftOpenDoor, liftOpenDoorOptions);
+function openCloseLiftDoor(lift) {
+  lift.liftElement.childNodes[0].style.width = `0%`;
+  lift.liftElement.childNodes[1].style.width = `0%`;
+  lift.liftElement.addEventListener("transitionend", () => {
+    lift.liftElement.childNodes[0].style.width = `100%`;
+    lift.liftElement.childNodes[1].style.width = `100%`;
+    updateLiftInActiveStaus(lift.liftId);
+  });
 }
 
-function handleDownLiftClick() {
-  console.log("downclick");
-  document.getElementById("lift-1").classList.add("moveLiftDown");
+function updateLiftActiveStatus(liftId) {
+  const updatedState = lifts.map((l) =>
+    l.liftId == liftId ? { ...l, active: true } : l
+  );
+  lifts = updatedState;
 }
+
+function updateLiftInActiveStaus(liftId, cb = null) {
+  const updatedState = lifts.map((l) =>
+    l.liftId == liftId ? { ...l, active: false } : l
+  );
+  lifts = updatedState;
+}
+
+function updateLiftInActiveAndFloorStatus(liftId, newFloor) {
+  const updatedState = lifts.map((l) =>
+    l.liftId == liftId ? { ...l, active: false, currentFloor: newFloor } : l
+  );
+  lifts = updatedState;
+}
+
+function updateLiftCurrentFloor(liftId, newFloor) {
+  const updatedState = lifts.map((l) =>
+    l.liftId == liftId ? { ...l, currentFloor: newFloor } : l
+  );
+  lifts = updatedState;
+}
+
+function moveLift({ destFloor, liftToMove }) {
+  const distanceToMoveInPixel = liftToMove.distance * 132;
+  const timeToMove = liftToMove.distance * 2;
+  liftToMove.liftElement.style.setProperty("--distance", `${timeToMove}px`);
+  console.log({ timeToMove });
+
+  updateLiftActiveStatus(liftToMove.liftId);
+  if (liftToMove.currentFloor > destFloor) {
+    // move down
+    console.log("moving down ----->");
+    let currentTop = parseInt(
+      window.getComputedStyle(liftToMove.liftElement).top,
+      10
+    );
+    liftToMove.liftElement.style.top = `${
+      currentTop + distanceToMoveInPixel
+    }px`;
+  } else {
+    // move up
+    console.log("moving up ----->");
+    let currentTop = parseInt(
+      window.getComputedStyle(liftToMove.liftElement).top,
+      10
+    );
+    liftToMove.liftElement.style.top = `${
+      currentTop - distanceToMoveInPixel
+    }px`;
+  }
+
+  liftToMove.liftElement.addEventListener("transitionend", function () {
+    openCloseLiftDoor(liftToMove);
+    updateLiftCurrentFloor(liftToMove.liftId, Number(destFloor));
+  });
+}
+
+function findNearestLift(destinationFloor) {
+  const nearestLift = lifts
+    .filter((l) => !l.active)
+    .map((l) => ({
+      ...l,
+      distance: Math.abs(l.currentFloor - destinationFloor),
+    }))
+    .reduce((acc, val) => (acc.distance < val.distance ? acc : val), {});
+  return nearestLift;
+}
+
+function isLiftPresentAtFloor(floornumber) {
+  return lifts.filter((l) => l.currentFloor == floornumber).length;
+}
+
+function getPresentLiftDetails(floornumber) {
+  return lifts.find((l) => l.currentFloor == floornumber);
+}
+
+function handleUpLiftClick(event) {
+  const { attributes } = event.target;
+  const floornumber = attributes.floornumber.value;
+
+  if (isLiftPresentAtFloor(floornumber)) {
+    console.log("lift is already at the floor");
+    const presentLift = getPresentLiftDetails(floornumber);
+    openCloseLiftDoor(presentLift);
+  } else {
+    const nearestLift = findNearestLift(floornumber);
+    moveLift({
+      destFloor: floornumber,
+      liftToMove: nearestLift,
+    });
+  }
+}
+
+// function handleDownLiftClick(event) {
+//   const { attributes } = event.target;
+//   const floornumber = attributes.floornumber.value;
+
+//   if (lifts.filter((l) => l.currentFloor == floornumber).length) {
+//     console.log(
+//       "lift is already at the floor , open and close the door of first lift"
+//     );
+//     const presentLift = getPresentLiftDetails(floornumber);
+//     openLiftDoor(presentLift);
+//     closeLiftDoor(presentLift);
+//   } else {
+//     const nearestLift = findNearestLift(floornumber);
+//     moveLift({
+//       destFloor: floornumber,
+//       liftToMove: nearestLift,
+//     });
+//   }
+// }
 
 function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
   const container = document.getElementById("simulationContainer");
   container.innerHTML = "";
+  lifts = [];
 
   for (let i = Number(noOfFloorsToBuild); i >= 1; i--) {
     let topFloor = i === Number(noOfFloorsToBuild);
@@ -32,12 +152,17 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
     floor.appendChild(liftContainer);
     const floorName = document.createElement("p");
     const upButton = document.createElement("button");
-    upButton.addEventListener("click", handleUpLiftClick);
     upButton.textContent = "UP";
     upButton.setAttribute("class", "upBtn");
+    upButton.setAttribute("floorNumber", `${i}`);
+    upButton.setAttribute("direction", "up");
+    upButton.addEventListener("click", handleUpLiftClick);
+
     const downButton = document.createElement("button");
     downButton.setAttribute("class", "downBtn");
-    downButton.addEventListener("click", handleDownLiftClick);
+    downButton.setAttribute("floorNumber", `${i}`);
+    downButton.setAttribute("direction", "down");
+    downButton.addEventListener("click", handleUpLiftClick);
     downButton.textContent = "DOWN";
     floorName.innerText = `floor-${i}`;
     floorName.setAttribute("class", "floorName");
@@ -53,10 +178,21 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
     if (groundFloor) {
       for (let i = 1; i <= Number(noOfLiftsToBuild); i++) {
         const lift = document.createElement("div");
+        const liftDoorLeft = document.createElement("div");
+        const liftDoorRight = document.createElement("div");
+        liftDoorLeft.setAttribute("class", "door");
+        liftDoorRight.setAttribute("class", "door");
+        lift.append(liftDoorLeft, liftDoorRight);
         lift.setAttribute("class", "lift");
         lift.setAttribute("id", `lift-${i}`);
         liftContainer.appendChild(lift);
         buttonContainer.appendChild(upButton);
+        lifts.push({
+          liftElement: lift,
+          liftId: i,
+          currentFloor: 1,
+          active: false,
+        });
       }
     }
 

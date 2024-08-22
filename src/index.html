@@ -9,10 +9,22 @@
   <body>
     <div class="inputContainer">
       <label for="noOfFloors">No of floors</label>
-      <input id="noOfFloors" class="inputStyle" type="number" />
+      <input
+        id="noOfFloors"
+        class="inputStyle"
+        type="number"
+        min="1"
+        value="5"
+      />
       <label for="noOfLifts">No of lifts</label>
 
-      <input id="noOfLifts" class="inputStyle" type="number" />
+      <input
+        id="noOfLifts"
+        class="inputStyle"
+        min="1"
+        type="number"
+        value="2"
+      />
       <button type="button" id="createLiftBtn">Create Lifts</button>
     </div>
 
@@ -21,10 +33,14 @@
     <!-- <div class="floor">
       <div class="buttonContainer">
         <span>floor2</span>
-        <button>up</button><button>down</button>
+        <button id="upBtn">up</button>
+        <button id="downBtn">down</button>
       </div>
       <div class="liftContainer">
-        <div class="lift"></div>
+        <div id="l" class="lift">
+          <div class="door" id="left-door"></div>
+          <div class="door" id="right-door"></div>
+        </div>
         <div class="lift"></div>
         <div class="lift"></div>
       </div>
