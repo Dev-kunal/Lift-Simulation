@@ -122,7 +122,8 @@ function findNearestLift(destinationFloor) {
       ...l,
       distance: Math.abs(l.currentFloor - destinationFloor),
     }))
-    .reduce((acc, val) => (acc.distance < val.distance ? acc : val), {});
+    // .reduce((acc, val) => (acc.distance < val.distance ? acc : val), {});
+    .reduce((acc, val) => (val.distance < acc.distance ? val : acc));
   return Object.keys(nearestLift).length > 0 ? nearestLift : null;
 }
 
