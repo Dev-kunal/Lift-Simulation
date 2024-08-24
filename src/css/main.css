@@ -78,12 +78,22 @@ body {
   height: 80%;
   width: 33%;
   max-width: 80px;
-  background-color: SlateBlue;
+  background-color: rgb(125, 113, 203);
   margin-top: 1.6rem;
   position: relative;
   top: 0;
   transition: all var(--transitionTime) ease-out;
   display: flex;
+}
+
+@keyframes openCloseDoor {
+  0%,
+  100% {
+    width: 50%;
+  }
+  50% {
+    width: 0px;
+  }
 }
 
 .door {
@@ -92,7 +102,6 @@ body {
   height: 100%;
   background-color: #cccad8;
   border: 1px solid black;
-  transition: all 5s ease-out;
 }
 
 .upBtn {

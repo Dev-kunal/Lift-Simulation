@@ -1,26 +1,20 @@
 let lifts = [];
 const activeRequests = [];
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// not working
-async function closeDoor(lift) {
-  lift.liftElement.childNodes[0].style.width = `100%`;
-  lift.liftElement.childNodes[1].style.width = `100%`;
-}
-
 function openCloseLiftDoor(lift) {
   const door1 = lift.liftElement.childNodes[0];
   const door2 = lift.liftElement.childNodes[1];
 
-  door1.style.width = `0%`;
-  door2.style.width = `0%`;
+  door1.style.animation = "none";
+  door2.style.animation = "none";
+  door1.offsetWidth;
+  door2.offsetWidth;
+  door1.style.animation = "openCloseDoor 5s 1";
+  door2.style.animation = "openCloseDoor 5s 1";
 
-  lift.liftElement.addEventListener("transitionend", async function () {
-    door1.style.width = `100%`;
-    door2.style.width = `100%`;
+  lift.liftElement.addEventListener("animationend", async function () {
+    door1.style.animation = "none";
+    door2.style.animation = "none";
     updateLiftInActiveStaus(lift.liftId);
   });
 }
