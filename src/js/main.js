@@ -1,13 +1,57 @@
 let lifts = [];
 const activeRequests = [];
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// not working
+async function closeDoor(lift) {
+  lift.liftElement.childNodes[0].style.width = `100%`;
+  lift.liftElement.childNodes[1].style.width = `100%`;
+}
+
 function openCloseLiftDoor(lift) {
+  const door1 = lift.liftElement.childNodes[0];
+  const door2 = lift.liftElement.childNodes[1];
+
+  door1.style.width = `0%`;
+  door2.style.width = `0%`;
+
+  lift.liftElement.addEventListener("transitionend", async function () {
+    door1.style.width = `100%`;
+    door2.style.width = `100%`;
+    updateLiftInActiveStaus(lift.liftId);
+  });
+}
+
+function openDoor(lift) {
   lift.liftElement.childNodes[0].style.width = `0%`;
   lift.liftElement.childNodes[1].style.width = `0%`;
-  lift.liftElement.addEventListener("transitionend", () => {
+  return new Promise((resolve) => {
+    lift.liftElement.childNodes[0].addEventListener(
+      "transitionend",
+      function () {
+        lift.liftElement.childNodes[0].style.width = `100%`;
+        lift.liftElement.childNodes[1].style.width = `100%`;
+
+        resolve();
+      }
+    );
+  });
+}
+
+function closeDoor(lift) {
+  return new Promise((resolve) => {
     lift.liftElement.childNodes[0].style.width = `100%`;
     lift.liftElement.childNodes[1].style.width = `100%`;
-    updateLiftInActiveStaus(lift.liftId);
+
+    lift.liftElement.childNodes[0].addEventListener(
+      "transitionend",
+      function () {
+        resolve();
+      }
+    );
   });
 }
 
@@ -18,19 +62,20 @@ function updateLiftActiveStatus(liftId) {
   lifts = updatedState;
 }
 
-function updateLiftInActiveStaus(liftId, cb = null) {
+function updateLiftInActiveStaus(liftId) {
+  console.log("here updating inactive status");
   const updatedState = lifts.map((l) =>
     l.liftId == liftId ? { ...l, active: false } : l
   );
   lifts = updatedState;
 }
 
-function updateLiftInActiveAndFloorStatus(liftId, newFloor) {
-  const updatedState = lifts.map((l) =>
-    l.liftId == liftId ? { ...l, active: false, currentFloor: newFloor } : l
-  );
-  lifts = updatedState;
-}
+// function updateLiftInActiveAndFloorStatus(liftId, newFloor) {
+//   const updatedState = lifts.map((l) =>
+//     l.liftId == liftId ? { ...l, active: false, currentFloor: newFloor } : l
+//   );
+//   lifts = updatedState;
+// }
 
 function updateLiftCurrentFloor(liftId, newFloor) {
   const updatedState = lifts.map((l) =>
@@ -42,8 +87,10 @@ function updateLiftCurrentFloor(liftId, newFloor) {
 function moveLift({ destFloor, liftToMove }) {
   const distanceToMoveInPixel = liftToMove.distance * 132;
   const timeToMove = liftToMove.distance * 2;
-  liftToMove.liftElement.style.setProperty("--distance", `${timeToMove}px`);
-  console.log({ timeToMove });
+  liftToMove.liftElement.style.setProperty(
+    "--transitionTime",
+    `${timeToMove}s`
+  );
 
   updateLiftActiveStatus(liftToMove.liftId);
   if (liftToMove.currentFloor > destFloor) {
@@ -68,7 +115,7 @@ function moveLift({ destFloor, liftToMove }) {
     }px`;
   }
 
-  liftToMove.liftElement.addEventListener("transitionend", function () {
+  liftToMove.liftElement.addEventListener("transitionend", async function () {
     openCloseLiftDoor(liftToMove);
     updateLiftCurrentFloor(liftToMove.liftId, Number(destFloor));
   });
@@ -93,7 +140,7 @@ function getPresentLiftDetails(floornumber) {
   return lifts.find((l) => l.currentFloor == floornumber);
 }
 
-function handleUpLiftClick(event) {
+async function handleUpLiftClick(event) {
   const { attributes } = event.target;
   const floornumber = attributes.floornumber.value;
 
@@ -116,7 +163,7 @@ function handleUpLiftClick(event) {
 
 //   if (lifts.filter((l) => l.currentFloor == floornumber).length) {
 //     console.log(
-//       "lift is already at the floor , open and close the door of first lift"
+//       "lift is already at the floor"
 //     );
 //     const presentLift = getPresentLiftDetails(floornumber);
 //     openLiftDoor(presentLift);
