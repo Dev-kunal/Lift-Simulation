@@ -130,6 +130,7 @@ async function handleUpLiftClick(event) {
   if (isLiftPresentAtFloor(floornumber)) {
     // console.log("lift is already at the floor");
     const presentLift = getPresentLiftDetails(floornumber);
+    updateLiftActiveStatus(presentLift.liftId);
     openCloseLiftDoor(presentLift);
   } else {
     const nearestLift = findNearestLift(floornumber);
