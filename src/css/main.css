@@ -84,6 +84,7 @@ body {
   top: 0;
   transition: all var(--transitionTime) ease-out;
   display: flex;
+  overflow: hidden;
 }
 
 @keyframes openCloseDoor {

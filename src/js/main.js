@@ -1,34 +1,34 @@
 let lifts = [];
 const activeRequests = [];
 
-function openCloseLiftDoor(lift) {
+async function openCloseLiftDoor(lift) {
   const door1 = lift.liftElement.childNodes[0];
   const door2 = lift.liftElement.childNodes[1];
 
-  door2.addEventListener("animationend", function () {
-    door1.style.animation = "none";
-    door2.style.animation = "none";
-    updateLiftInActiveStaus(lift.liftId);
-  });
+  const leftDoorAnimation = door1.animate(
+    [
+      {
+        transform: `translateX(0%)`,
+      },
+      { transform: `translateX(-100%)` },
+      { transform: `translateX(0%)` },
+    ],
+    { duration: 5000 }
+  );
 
-  door1.style.animation = "openCloseDoor 5s 1";
-  door2.style.animation = "openCloseDoor 5s 1";
-}
+  const rightDoorAnimation = door2.animate(
+    [
+      {
+        transform: `translateX(0%)`,
+      },
+      { transform: `translateX(100%)` },
+      { transform: `translateX(0%)` },
+    ],
+    { duration: 5000 }
+  );
 
-function openDoor(lift) {
-  lift.liftElement.childNodes[0].style.width = `0%`;
-  lift.liftElement.childNodes[1].style.width = `0%`;
-  return new Promise((resolve) => {
-    lift.liftElement.childNodes[0].addEventListener(
-      "transitionend",
-      function () {
-        lift.liftElement.childNodes[0].style.width = `100%`;
-        lift.liftElement.childNodes[1].style.width = `100%`;
-
-        resolve();
-      }
-    );
-  });
+  await Promise.all([leftDoorAnimation.finished, rightDoorAnimation.finished]);
+  updateLiftInActiveStaus(lift.liftId);
 }
 
 function closeDoor(lift) {
@@ -45,6 +45,19 @@ function closeDoor(lift) {
   });
 }
 
+function processActiveRequest() {
+  const nearestLift = findNearestLift(activeRequests?.[0].to);
+  if (nearestLift) {
+    const req = activeRequests.shift();
+    const nearestLift = findNearestLift(req.to);
+    updateLiftActiveStatus(nearestLift.liftId);
+    moveLift({
+      destFloor: req.to,
+      liftToMove: nearestLift,
+    });
+  } else return;
+}
+
 function updateLiftActiveStatus(liftId) {
   const updatedState = lifts.map((l) =>
     l.liftId == liftId ? { ...l, active: true } : l
@@ -57,7 +70,6 @@ function updateLiftInActiveStaus(liftId) {
     l.liftId == liftId ? { ...l, active: false } : l
   );
   lifts = updatedState;
-  console.log("updated the active status");
 }
 
 function updateLiftCurrentFloor(liftId, newFloor) {
@@ -75,10 +87,9 @@ function moveLift({ destFloor, liftToMove }) {
     `${timeToMove}s`
   );
 
-  updateLiftActiveStatus(liftToMove.liftId);
   if (liftToMove.currentFloor > destFloor) {
     // move down
-    console.log("moving down ----->");
+    // console.log("moving down ----->");
     let currentTop = parseInt(
       window.getComputedStyle(liftToMove.liftElement).top,
       10
@@ -88,7 +99,7 @@ function moveLift({ destFloor, liftToMove }) {
     }px`;
   } else {
     // move up
-    console.log("moving up ----->");
+    // console.log("moving up ----->");
     let currentTop = parseInt(
       window.getComputedStyle(liftToMove.liftElement).top,
       10
@@ -99,8 +110,8 @@ function moveLift({ destFloor, liftToMove }) {
   }
 
   liftToMove.liftElement.addEventListener("transitionend", async function () {
-    openCloseLiftDoor(liftToMove);
     updateLiftCurrentFloor(liftToMove.liftId, Number(destFloor));
+    await openCloseLiftDoor(liftToMove);
   });
 }
 
@@ -112,7 +123,7 @@ function findNearestLift(destinationFloor) {
       distance: Math.abs(l.currentFloor - destinationFloor),
     }))
     .reduce((acc, val) => (acc.distance < val.distance ? acc : val), {});
-  return nearestLift;
+  return Object.keys(nearestLift).length > 0 ? nearestLift : null;
 }
 
 function isLiftPresentAtFloor(floornumber) {
@@ -128,38 +139,33 @@ async function handleUpLiftClick(event) {
   const floornumber = attributes.floornumber.value;
 
   if (isLiftPresentAtFloor(floornumber)) {
-    // console.log("lift is already at the floor");
+    // console.log("lift is present at floor->");
     const presentLift = getPresentLiftDetails(floornumber);
     updateLiftActiveStatus(presentLift.liftId);
-    openCloseLiftDoor(presentLift);
+    await openCloseLiftDoor(presentLift, presentLift.currentFloor);
   } else {
-    const nearestLift = findNearestLift(floornumber);
-    moveLift({
-      destFloor: floornumber,
-      liftToMove: nearestLift,
+    activeRequests.push({
+      to: floornumber,
     });
   }
+
+  // was checking for the nearest lift and was directly moving lift
+  // else {
+  //   const nearestLift = findNearestLift(floornumber);
+  //   if (!nearestLift) {
+  //     // console.log("make entry in the Q");
+  //     activeRequests.push({
+  //       to: floornumber,
+  //     });
+  //     return;
+  //   }
+  //   updateLiftActiveStatus(nearestLift.liftId);
+  //   moveLift({
+  //     destFloor: floornumber,
+  //     liftToMove: nearestLift,
+  //   });
+  // }
 }
-
-// function handleDownLiftClick(event) {
-//   const { attributes } = event.target;
-//   const floornumber = attributes.floornumber.value;
-
-//   if (lifts.filter((l) => l.currentFloor == floornumber).length) {
-//     console.log(
-//       "lift is already at the floor"
-//     );
-//     const presentLift = getPresentLiftDetails(floornumber);
-//     openLiftDoor(presentLift);
-//     closeLiftDoor(presentLift);
-//   } else {
-//     const nearestLift = findNearestLift(floornumber);
-//     moveLift({
-//       destFloor: floornumber,
-//       liftToMove: nearestLift,
-//     });
-//   }
-// }
 
 function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
   const container = document.getElementById("simulationContainer");
@@ -187,13 +193,19 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
     upButton.setAttribute("class", "upBtn");
     upButton.setAttribute("floorNumber", `${i}`);
     upButton.setAttribute("direction", "up");
-    upButton.addEventListener("click", handleUpLiftClick);
+    upButton.addEventListener(
+      "click",
+      async (event) => await handleUpLiftClick(event)
+    );
 
     const downButton = document.createElement("button");
     downButton.setAttribute("class", "downBtn");
     downButton.setAttribute("floorNumber", `${i}`);
     downButton.setAttribute("direction", "down");
-    downButton.addEventListener("click", handleUpLiftClick);
+    downButton.addEventListener(
+      "click",
+      async (event) => await handleUpLiftClick(event)
+    );
     downButton.textContent = "DOWN";
     floorName.innerText = `floor-${i}`;
     floorName.setAttribute("class", "floorName");
@@ -230,6 +242,12 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
     container.appendChild(floor);
   }
 }
+
+setInterval(() => {
+  if (activeRequests.length > 0) {
+    processActiveRequest();
+  }
+}, 200);
 
 document.getElementById("createLiftBtn").addEventListener("click", function () {
   const noOfFloors = document.getElementById("noOfFloors").value;
