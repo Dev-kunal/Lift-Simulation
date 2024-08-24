@@ -5,18 +5,14 @@ function openCloseLiftDoor(lift) {
   const door1 = lift.liftElement.childNodes[0];
   const door2 = lift.liftElement.childNodes[1];
 
-  door1.style.animation = "none";
-  door2.style.animation = "none";
-  door1.offsetWidth;
-  door2.offsetWidth;
-  door1.style.animation = "openCloseDoor 5s 1";
-  door2.style.animation = "openCloseDoor 5s 1";
-
-  lift.liftElement.addEventListener("animationend", async function () {
+  door2.addEventListener("animationend", function () {
     door1.style.animation = "none";
     door2.style.animation = "none";
     updateLiftInActiveStaus(lift.liftId);
   });
+
+  door1.style.animation = "openCloseDoor 5s 1";
+  door2.style.animation = "openCloseDoor 5s 1";
 }
 
 function openDoor(lift) {
@@ -57,19 +53,12 @@ function updateLiftActiveStatus(liftId) {
 }
 
 function updateLiftInActiveStaus(liftId) {
-  console.log("here updating inactive status");
   const updatedState = lifts.map((l) =>
     l.liftId == liftId ? { ...l, active: false } : l
   );
   lifts = updatedState;
+  console.log("updated the active status");
 }
-
-// function updateLiftInActiveAndFloorStatus(liftId, newFloor) {
-//   const updatedState = lifts.map((l) =>
-//     l.liftId == liftId ? { ...l, active: false, currentFloor: newFloor } : l
-//   );
-//   lifts = updatedState;
-// }
 
 function updateLiftCurrentFloor(liftId, newFloor) {
   const updatedState = lifts.map((l) =>
@@ -139,7 +128,7 @@ async function handleUpLiftClick(event) {
   const floornumber = attributes.floornumber.value;
 
   if (isLiftPresentAtFloor(floornumber)) {
-    console.log("lift is already at the floor");
+    // console.log("lift is already at the floor");
     const presentLift = getPresentLiftDetails(floornumber);
     openCloseLiftDoor(presentLift);
   } else {

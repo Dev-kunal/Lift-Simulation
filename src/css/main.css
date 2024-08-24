@@ -102,6 +102,7 @@ body {
   height: 100%;
   background-color: #cccad8;
   border: 1px solid black;
+  animation-timing-function: ease-in-out;
 }
 
 .upBtn {
