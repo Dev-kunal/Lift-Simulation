@@ -116,11 +116,12 @@ function updateLiftCurrentFloor(liftId, newFloor) {
 }
 
 function moveLift({ destFloor, liftToMove }) {
-  const distanceToMoveInPixel = liftToMove.distance * 132;
+  const distanceToMoveInPixel = liftToMove.distance * 130;
   const timeToMove = liftToMove.distance * 2;
   liftToMove.liftElement.style.setProperty(
     "--transitionTime",
     `${timeToMove}s`
+    // `${10}s`
   );
 
   if (liftToMove.currentFloor > destFloor) {
