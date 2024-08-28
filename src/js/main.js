@@ -1,11 +1,29 @@
 let lifts = [];
-const activeRequests = [];
+let activeRequests = [];
+
+function updateLiftDoorAnimationStatus(liftId) {
+  const updatedState = lifts.map((l) =>
+    l.liftId == liftId
+      ? { ...l, leftDoorAnimation: "running", rightDoorAnimation: "running" }
+      : l
+  );
+  lifts = updatedState;
+}
 
 async function openCloseLiftDoor(lift) {
   const door1 = lift.liftElement.childNodes[0];
   const door2 = lift.liftElement.childNodes[1];
 
-  const leftDoorAnimation = door1.animate(
+  if (
+    lift.leftDoorAnimation === "running" ||
+    lift.rightDoorAnimation === "running"
+  ) {
+    // console.log("Animation is already running for this lift. Returning...");
+    return;
+  }
+
+  updateLiftDoorAnimationStatus(lift.liftId);
+  lift.leftDoorAnimation = door1.animate(
     [
       {
         transform: `translateX(0%)`,
@@ -16,7 +34,7 @@ async function openCloseLiftDoor(lift) {
     { duration: 5000 }
   );
 
-  const rightDoorAnimation = door2.animate(
+  lift.rightDoorAnimation = door2.animate(
     [
       {
         transform: `translateX(0%)`,
@@ -27,30 +45,34 @@ async function openCloseLiftDoor(lift) {
     { duration: 5000 }
   );
 
-  await Promise.all([leftDoorAnimation.finished, rightDoorAnimation.finished]);
+  await Promise.all([
+    lift.leftDoorAnimation.finished,
+    lift.rightDoorAnimation.finished,
+  ]);
   updateLiftInActiveStaus(lift.liftId);
 }
 
-function closeDoor(lift) {
-  return new Promise((resolve) => {
-    lift.liftElement.childNodes[0].style.width = `100%`;
-    lift.liftElement.childNodes[1].style.width = `100%`;
-
-    lift.liftElement.childNodes[0].addEventListener(
-      "transitionend",
-      function () {
-        resolve();
-      }
-    );
-  });
-}
-
 function processActiveRequest() {
-  const nearestLift = findNearestLift(activeRequests?.[0].to);
-  if (nearestLift) {
+  const inActiveLifts = lifts.filter((l) => !l.active);
+
+  if (inActiveLifts.length > 0) {
+    const nearestLift = findNearestLift(Number(activeRequests?.[0].to));
     const req = activeRequests.shift();
-    const nearestLift = findNearestLift(req.to);
-    updateLiftActiveStatus(nearestLift.liftId);
+    if (nearestLift.currentFloor == req.to) {
+      // console.log("lift is already at the same floor --->");
+      return;
+    }
+
+    //check for if theres any active lift going to the floor for activeReq floor
+    const activeLiftsForCurrentReq = lifts.filter(
+      (l) => l.active && l.movingTo == req.to
+    );
+    if (activeLiftsForCurrentReq.length > 0) {
+      // console.log("active req for the same flooe ---> returning..");
+      return;
+    }
+
+    updateLiftActiveStatus(nearestLift.liftId, req.to, true);
     moveLift({
       destFloor: req.to,
       liftToMove: nearestLift,
@@ -58,23 +80,37 @@ function processActiveRequest() {
   } else return;
 }
 
-function updateLiftActiveStatus(liftId) {
+function updateLiftActiveStatus(liftId, movingTo, isMoving) {
   const updatedState = lifts.map((l) =>
-    l.liftId == liftId ? { ...l, active: true } : l
+    l.liftId == liftId
+      ? {
+          ...l,
+          active: true,
+          movingTo: movingTo ?? null,
+          isMoving: isMoving ?? null,
+        }
+      : l
   );
   lifts = updatedState;
 }
 
 function updateLiftInActiveStaus(liftId) {
   const updatedState = lifts.map((l) =>
-    l.liftId == liftId ? { ...l, active: false } : l
+    l.liftId == liftId
+      ? {
+          ...l,
+          active: false,
+          leftDoorAnimation: "finished",
+          rightDoorAnimation: "finished",
+        }
+      : l
   );
   lifts = updatedState;
 }
 
 function updateLiftCurrentFloor(liftId, newFloor) {
   const updatedState = lifts.map((l) =>
-    l.liftId == liftId ? { ...l, currentFloor: newFloor } : l
+    l.liftId == liftId ? { ...l, currentFloor: newFloor, isMoving: false } : l
   );
   lifts = updatedState;
 }
@@ -116,19 +152,21 @@ function moveLift({ destFloor, liftToMove }) {
 }
 
 function findNearestLift(destinationFloor) {
-  const nearestLift = lifts
-    .filter((l) => !l.active)
-    .map((l) => ({
-      ...l,
-      distance: Math.abs(l.currentFloor - destinationFloor),
-    }))
-    // .reduce((acc, val) => (acc.distance < val.distance ? acc : val), {});
-    .reduce((acc, val) => (val.distance < acc.distance ? val : acc));
+  const inActiveLifts = lifts.filter((l) => !l.active);
+  const liftsWithDistance = inActiveLifts.map((l) => ({
+    ...l,
+    distance: Math.abs(l.currentFloor - destinationFloor),
+  }));
+  const nearestLift = liftsWithDistance?.reduce((acc, val) =>
+    val.distance < acc.distance ? val : acc
+  );
+
   return Object.keys(nearestLift).length > 0 ? nearestLift : null;
 }
 
 function isLiftPresentAtFloor(floornumber) {
-  return lifts.filter((l) => l.currentFloor == floornumber).length;
+  return lifts.filter((l) => l.currentFloor == floornumber && !l.isMoving)
+    .length;
 }
 
 function getPresentLiftDetails(floornumber) {
@@ -140,7 +178,6 @@ async function handleUpLiftClick(event) {
   const floornumber = attributes.floornumber.value;
 
   if (isLiftPresentAtFloor(floornumber)) {
-    // console.log("lift is present at floor->");
     const presentLift = getPresentLiftDetails(floornumber);
     updateLiftActiveStatus(presentLift.liftId);
     await openCloseLiftDoor(presentLift, presentLift.currentFloor);
@@ -149,29 +186,13 @@ async function handleUpLiftClick(event) {
       to: floornumber,
     });
   }
-
-  // was checking for the nearest lift and was directly moving lift
-  // else {
-  //   const nearestLift = findNearestLift(floornumber);
-  //   if (!nearestLift) {
-  //     // console.log("make entry in the Q");
-  //     activeRequests.push({
-  //       to: floornumber,
-  //     });
-  //     return;
-  //   }
-  //   updateLiftActiveStatus(nearestLift.liftId);
-  //   moveLift({
-  //     destFloor: floornumber,
-  //     liftToMove: nearestLift,
-  //   });
-  // }
 }
 
 function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
   const container = document.getElementById("simulationContainer");
   container.innerHTML = "";
   lifts = [];
+  activeRequests = [];
 
   for (let i = Number(noOfFloorsToBuild); i >= 1; i--) {
     let topFloor = i === Number(noOfFloorsToBuild);
@@ -235,7 +256,10 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
           liftElement: lift,
           liftId: i,
           currentFloor: 1,
+          isMoving: false,
           active: false,
+          leftDoorAnimation: null,
+          rightDoorAnimation: null,
         });
       }
     }
@@ -245,6 +269,8 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
 }
 
 setInterval(() => {
+  const inActiveLifts = lifts.filter((l) => !l.active);
+
   if (activeRequests.length > 0) {
     processActiveRequest();
   }
