@@ -280,6 +280,13 @@ setInterval(() => {
 document.getElementById("createLiftBtn").addEventListener("click", function () {
   const noOfFloors = document.getElementById("noOfFloors").value;
   const noOfLifts = document.getElementById("noOfLifts").value;
+
+  if (Number(noOfLifts) > Number(noOfFloors)) {
+    alert(
+      `No of lift shouldnt be more than no of floors. Why do we need ${noOfLifts} for ${noOfFloors} floors`
+    );
+    return;
+  }
   if (Number(noOfFloors) < 2) {
     alert("Pls add more than one floor");
     return;
