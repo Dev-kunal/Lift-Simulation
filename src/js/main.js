@@ -65,14 +65,14 @@ function processActiveRequest() {
 
     //check for if theres any active lift going to the floor for activeReq floor
     const activeLiftsForCurrentReq = lifts.filter(
-      (l) => l.active && l.movingTo == req.to
+      (l) => l.active && l.movingTo == req.to && l.direction == req.direction
     );
     if (activeLiftsForCurrentReq.length > 0) {
-      // console.log("active req for the same flooe ---> returning..");
+      // console.log("active req for the same floor ---> returning..");
       return;
     }
 
-    updateLiftActiveStatus(nearestLift.liftId, req.to, true);
+    updateLiftActiveStatus(nearestLift.liftId, req.to, true, req.direction);
     moveLift({
       destFloor: req.to,
       liftToMove: nearestLift,
@@ -80,7 +80,7 @@ function processActiveRequest() {
   } else return;
 }
 
-function updateLiftActiveStatus(liftId, movingTo, isMoving) {
+function updateLiftActiveStatus(liftId, movingTo, isMoving, direction) {
   const updatedState = lifts.map((l) =>
     l.liftId == liftId
       ? {
@@ -88,6 +88,7 @@ function updateLiftActiveStatus(liftId, movingTo, isMoving) {
           active: true,
           movingTo: movingTo ?? null,
           isMoving: isMoving ?? null,
+          direction: direction ?? null,
         }
       : l
   );
@@ -175,7 +176,7 @@ function getPresentLiftDetails(floornumber) {
 }
 
 async function handleUpLiftClick(event) {
-  const { attributes } = event.target;
+  const { attributes, innerText } = event.target;
   const floornumber = attributes.floornumber.value;
 
   if (isLiftPresentAtFloor(floornumber)) {
@@ -185,6 +186,7 @@ async function handleUpLiftClick(event) {
   } else {
     activeRequests.push({
       to: floornumber,
+      direction: innerText === "UP" ? "up" : "down",
     });
   }
 }
@@ -270,8 +272,6 @@ function buildFloorsWithLifts(noOfFloorsToBuild, noOfLiftsToBuild) {
 }
 
 setInterval(() => {
-  const inActiveLifts = lifts.filter((l) => !l.active);
-
   if (activeRequests.length > 0) {
     processActiveRequest();
   }
