@@ -9,6 +9,10 @@ body {
     "Lucida Sans", Arial, sans-serif;
 }
 
+button {
+  cursor: pointer;
+}
+
 .inputContainer {
   padding: 1rem;
   border: 1px solid black;
